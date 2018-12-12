@@ -6,6 +6,8 @@
  * Magic Mirror By Michael Teeuw http://michaelteeuw.nl
  * MIT Licensed.
  * 
+ * By Kyle Kelly
+ * Forked from:
  * Module MMM-DCMetroTrainTimes By Adam Moses http://adammoses.com
  */
 // main module setup stuff
@@ -14,7 +16,9 @@ Module.register("MMM-DCMetroTrainTimes", {
 	defaults: {		
 		// required
 		wmata_api_key: null, // this must be set
-		// optional
+		
+        // optional
+        // train parameters
 	    showIncidents: true, // show incidents by default
 	    showStationTrainTimes: true, // show train times by default
 	    stationsToShowList: [ 'A01', 'C01' ], // both metro centers default
@@ -22,13 +26,24 @@ Module.register("MMM-DCMetroTrainTimes", {
         refreshRateIncidents: 2 * 60 * 1000, // two minute default
         refreshRateStationTrainTimes: 30 * 1000, // thirty second default
         maxTrainTimesPerStation: 0, // default shows all train times
+        hideTrainTimesLessThan: 0, // default to show all train times
+        
+        // header parameters
         showHeader: true, // show the header by default
-        headerText: "DC Metro Train Times", // default header text
+        headerText: "WMATA Times", // default header text
         limitWidth: "200px", // limits the incident list (widest cell) width
         colorizeLines: false, // default to no color
         incidentCodesOnly: false, // default to full text incident line listing
-        hideTrainTimesLessThan: 0, // default to show all train times
-	showDestinationFullName: true, // default to show full train destination names
+
+        // bus parameters
+        showBusStopTimes: false, // hide bus times by default
+        stopsToShowList: [], // stopIDs which can be pulled from https://www.wmata.com/schedules/service-nearby/
+        routesToExcludeList: [], // routeIDs (list of lists) for each stop which can be pulled from https://www.wmata.com/schedules/service-nearby/
+        directionText: false, // default to hide "customer-friendly description of direction and destination for a bus"
+        hideBusTimesLessThan: 0, // default to show all bus times within 45 min
+        hideBusTimesGreaterThan: 45, // default to show all bus times within 45 min
+        refreshRateBusStopTimes: 30 * 1000, // thirty second default
+        maxBusTimesPerStop: 0, // default shows all train times
 	},
 	// the start function
 	start: function() {
@@ -42,6 +57,7 @@ Module.register("MMM-DCMetroTrainTimes", {
 		this.dataIncidentDescriptionList = null;
 		this.dataIncidentLinesList = null;
 		this.dataStationTrainTimesList = null;
+        this.dataBusStopTimesList = null;
 		// if set to show the header, set it
         if (this.config.showHeader)
             this.data.header = this.config.headerText;
@@ -64,9 +80,10 @@ Module.register("MMM-DCMetroTrainTimes", {
 	socketNotificationReceived: function(notification, payload) {
 		if (notification === "DCMETRO_INCIDENT_UPDATE")
 		{ // if an incident update check matching id, load data, and update dom
-			if (payload.identifier === this.identifier)
+            if (payload.identifier === this.identifier)
 			{
-				this.dataIncidentDescriptionList = payload.descriptionList;
+				this.errorMessage = null; // clear error message
+                this.dataIncidentDescriptionList = payload.descriptionList;
 				this.dataIncidentLinesList = payload.linesList;
                 this.dataLoaded = true;
 				if (this.firstUpdateDOMFlag)
@@ -75,14 +92,26 @@ Module.register("MMM-DCMetroTrainTimes", {
 		}
 		if (notification === "DCMETRO_STATIONTRAINTIMES_UPDATE")
 		{ // if an station train times update check matching id, load data, and update dom
-			if (payload.identifier === this.identifier)
+            if (payload.identifier === this.identifier)
 			{
-				this.dataStationTrainTimesList = payload.stationTrainList;
+				this.errorMessage = null; // clear error message
+                this.dataStationTrainTimesList = payload.stationTrainList;
                 this.dataLoaded = true;
 				if (this.firstUpdateDOMFlag) 
                     this.updateDom();				
 			}
 		}
+        if (notification === "DCMETRO_BUSTOPTIMES_UPDATE")
+        { // if a bus stop times update check matching id, load data, and update dom
+            if (payload.identifier === this.identifier)
+            {
+                this.errorMessage = null; // clear error message
+                this.dataBusStopTimesList = payload.busStopList;
+                this.dataLoaded = true;
+                if (this.firstUpdateDOMFlag) 
+                    this.updateDom();               
+            }
+        }
         if (notification === "DCMETRO_TOO_MANY_ERRORS")
         { // if an error, set the error flag and update dom
             this.errorMessage = 'Error: Too Many REST Failures';
@@ -290,6 +319,80 @@ Module.register("MMM-DCMetroTrainTimes", {
                     }							
                 }											
             }	
+        }
+        // if set to show bus times and there is data for it
+        if (this.config.showBusStopTimes && (this.dataStationTrainTimesList !== null))
+        {
+            // iterate through each stop in config station list
+            for (var curStopIndex = 0; curStopIndex < this.config.stopsToShowList.length; curStopIndex++)
+            {                      
+                var stopID = this.config.stopsToShowList[curStationIndex];
+                var cStop = this.dataStationTrainTimesList[stationCode];
+                // if a matching station was found in the data returned from the helper
+                if (cStop !== undefined)
+                {
+                    // create a header row of the station name
+                    var headRow = document.createElement("tr");
+                    var headElement = document.createElement("td");
+                    headElement.align = "right";
+                    headElement.colSpan = "3";
+                    headElement.className = "small";                    
+                    headElement.innerHTML = cStop.StationName;                   
+                    headRow.appendChild(headElement);
+                    wrapper.appendChild(headRow);                               
+                    // if there are train times in the list
+                    if (cStation.TrainList.length > 0)
+                    {
+                        // cap the number of train times to show if config-ed to do so
+                        var countTrainTimesToShow = cStation.TrainList.length;
+                        if ((this.config.maxTrainTimesPerStation !== 0)
+                            && (countTrainTimesToShow > this.config.maxTrainTimesPerStation))
+                            countTrainTimesToShow = this.config.maxTrainTimesPerStation;
+                        // iterate through the train times list
+                        for (var cTrainIndex = 0; cTrainIndex < countTrainTimesToShow; cTrainIndex++)
+                        {
+                            // each row should be the train line color, it's destination, and arrival time
+                            var cTrain = cStation.TrainList[cTrainIndex];
+                            var busRow = document.createElement("tr");
+                            busRow.className = "xsmall";
+                            busRow.align = "left";
+                            var lineElement = document.createElement("td");
+                            if (this.config.colorizeLines)
+                                lineElement.style = 'color:' + this.getLineCodeColor(cTrain.Line);
+                            lineElement.innerHTML = cTrain.Line;
+                            var destElement = document.createElement("td");
+                            destElement.align = "left";
+                            destElement.innerHTML = cTrain.Destination;
+                            var minElement = document.createElement("td");
+                            minElement.align = "right";                                 
+                            minElement.innerHTML = cTrain.Min;
+                            busRow.appendChild(lineElement);
+                            busRow.appendChild(destElement);
+                            busRow.appendChild(minElement);
+                            wrapper.appendChild(busRow);                                  
+                        }
+                    }
+                    // if no train times for this station then say so
+                    else
+                    {                        
+                        var busRow = document.createElement("tr");
+                        busRow.className = "xsmall";
+                        busRow.align = "left";
+                        var lineElement = document.createElement("td");
+                        lineElement.innerHTML = "--";
+                        var destElement = document.createElement("td");
+                        destElement.align = "left";
+                        destElement.innerHTML = "No Buses"
+                        var minElement = document.createElement("td");
+                        minElement.align = "right";                                 
+                        minElement.innerHTML = "";
+                        busRow.appendChild(lineElement);
+                        busRow.appendChild(destElement);
+                        busRow.appendChild(minElement);
+                        wrapper.appendChild(busRow);  
+                    }                           
+                }                                           
+            }   
         }
         // return the generated code
         return wrapper;		
