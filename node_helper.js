@@ -339,6 +339,7 @@ module.exports = NodeHelper.create({
 	            	busListPart[busListPart.length] = busPart;
                 // set the main station train list object to the train list part
 	            busStopList[stopID].BusList = busListPart;
+	            busStopList[stopID].StopName = stopName;
 	        }
 	    }
         // return payload is the module id and the station train list 

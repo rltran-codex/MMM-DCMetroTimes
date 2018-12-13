@@ -321,13 +321,13 @@ Module.register("MMM-DCMetroTrainTimes", {
             }	
         }
         // if set to show bus times and there is data for it
-        if (this.config.showBusStopTimes && (this.dataStationTrainTimesList !== null))
+        if (this.config.showBusStopTimes && (this.dataBusStopTimesList !== null))
         {
-            // iterate through each stop in config station list
+            // iterate through each stop in config stop list
             for (var curStopIndex = 0; curStopIndex < this.config.stopsToShowList.length; curStopIndex++)
             {                      
-                var stopID = this.config.stopsToShowList[curStationIndex];
-                var cStop = this.dataStationTrainTimesList[stationCode];
+                var stopID = this.config.stopsToShowList[curStopIndex];
+                var cStop = this.dataBusStopTimesList[stopID];
                 // if a matching station was found in the data returned from the helper
                 if (cStop !== undefined)
                 {
@@ -337,35 +337,33 @@ Module.register("MMM-DCMetroTrainTimes", {
                     headElement.align = "right";
                     headElement.colSpan = "3";
                     headElement.className = "small";                    
-                    headElement.innerHTML = cStop.StationName;                   
+                    headElement.innerHTML = cStop.StopName;                   
                     headRow.appendChild(headElement);
                     wrapper.appendChild(headRow);                               
                     // if there are train times in the list
-                    if (cStation.TrainList.length > 0)
+                    if (cStop.BusList.length > 0)
                     {
-                        // cap the number of train times to show if config-ed to do so
-                        var countTrainTimesToShow = cStation.TrainList.length;
-                        if ((this.config.maxTrainTimesPerStation !== 0)
-                            && (countTrainTimesToShow > this.config.maxTrainTimesPerStation))
-                            countTrainTimesToShow = this.config.maxTrainTimesPerStation;
+                        // cap the number of bus times to show if config-ed to do so
+                        var countBusTimesToShow = cStop.BusList.length;
+                        if ((this.config.maxBusTimesPerStop !== 0)
+                            && (countBusTimesToShow > this.config.maxBusTimesPerStop))
+                            countBusTimesToShow = this.config.maxBusTimesPerStop;
                         // iterate through the train times list
-                        for (var cTrainIndex = 0; cTrainIndex < countTrainTimesToShow; cTrainIndex++)
+                        for (var cBusIndex = 0; cBusIndex < countBusTimesToShow; cBusIndex++)
                         {
-                            // each row should be the train line color, it's destination, and arrival time
-                            var cTrain = cStation.TrainList[cTrainIndex];
+                            // each row should be the destination, and arrival time
+                            var cBus = cStop.BusList[cBusIndex];
                             var busRow = document.createElement("tr");
                             busRow.className = "xsmall";
                             busRow.align = "left";
                             var lineElement = document.createElement("td");
-                            if (this.config.colorizeLines)
-                                lineElement.style = 'color:' + this.getLineCodeColor(cTrain.Line);
-                            lineElement.innerHTML = cTrain.Line;
+                            lineElement.innerHTML = cBus.RouteID;
                             var destElement = document.createElement("td");
                             destElement.align = "left";
-                            destElement.innerHTML = cTrain.Destination;
+                            destElement.innerHTML = cBus.DirectionText;
                             var minElement = document.createElement("td");
                             minElement.align = "right";                                 
-                            minElement.innerHTML = cTrain.Min;
+                            minElement.innerHTML = cBus.Min;
                             busRow.appendChild(lineElement);
                             busRow.appendChild(destElement);
                             busRow.appendChild(minElement);
