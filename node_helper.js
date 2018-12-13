@@ -28,7 +28,8 @@ module.exports = NodeHelper.create({
 	// subclass socketNotificationReceived, received notification from module
 	socketNotificationReceived: function(notification, theConfig) {
 		if (notification === "REGISTER_CONFIG") {
-        // create self reference for interval calls
+        	console.log("");
+        	// create self reference for interval calls
 			var self = this;
             // load in the station information list
 			this.loadStationInformationList(theConfig.path);
@@ -342,13 +343,13 @@ module.exports = NodeHelper.create({
 	            busStopList[stopID].StopName = stopName;
 	        }
 	    }
-        // return payload is the module id and the station train list 
-	    var returnPayload = { 
-	        identifier: theConfig.identifier,
-	        busStopList: busStopList
-	    };
         // if we've gone through all stops, send the payload back to the module
 	    if (theConfig.stopsToShowList[theConfig.stopsToShowList.length - 1] == stopID)
+	    	// return payload is the module id and the station train list 
+		    var returnPayload = { 
+		        identifier: theConfig.identifier,
+		        busStopList: busStopList
+		    };
 	    	this.sendSocketNotification('DCMETRO_BUSTOPTIMES_UPDATE', returnPayload);
 	},
     // makes the call to get the train times list

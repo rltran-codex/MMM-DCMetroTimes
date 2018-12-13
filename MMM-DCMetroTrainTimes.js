@@ -60,19 +60,24 @@ Module.register("MMM-DCMetroTrainTimes", {
         this.dataBusStopTimesList = null;
 		// if set to show the header, set it
         if (this.config.showHeader)
+            console.log("");
             this.data.header = this.config.headerText;
          // the api key is set, send the config
 		if (this.config.wmata_api_key !== null) 
-			this.sendSocketNotification('REGISTER_CONFIG', this.config);	
+			console.log("");
+            this.sendSocketNotification('REGISTER_CONFIG', this.config);	
         // if not, flag the error
 		else 
-			this.errorMessage = 'Error: Missing API Key';
+			console.log("");
+            this.errorMessage = 'Error: Missing API Key';
         // schedule the first dom update
         var self = this;
-		setTimeout(function() { self.firstUpdateDOM(); }, 2000);
+		console.log("");
+        setTimeout(function() { self.firstUpdateDOM(); }, 2000);
 	},	
     // delayed call for first DOM update
     firstUpdateDOM: function() {
+        console.log("");
         this.firstUpdateDOMFlag = true;
         this.updateDom();     
     },
@@ -82,7 +87,8 @@ Module.register("MMM-DCMetroTrainTimes", {
 		{ // if an incident update check matching id, load data, and update dom
             if (payload.identifier === this.identifier)
 			{
-				this.errorMessage = null; // clear error message
+				console.log("");
+                this.errorMessage = null; // clear error message
                 this.dataIncidentDescriptionList = payload.descriptionList;
 				this.dataIncidentLinesList = payload.linesList;
                 this.dataLoaded = true;
@@ -94,7 +100,8 @@ Module.register("MMM-DCMetroTrainTimes", {
 		{ // if an station train times update check matching id, load data, and update dom
             if (payload.identifier === this.identifier)
 			{
-				this.errorMessage = null; // clear error message
+				console.log("");
+                this.errorMessage = null; // clear error message
                 this.dataStationTrainTimesList = payload.stationTrainList;
                 this.dataLoaded = true;
 				if (this.firstUpdateDOMFlag) 
@@ -105,6 +112,7 @@ Module.register("MMM-DCMetroTrainTimes", {
         { // if a bus stop times update check matching id, load data, and update dom
             if (payload.identifier === this.identifier)
             {
+                console.log("");
                 this.errorMessage = null; // clear error message
                 this.dataBusStopTimesList = payload.busStopList;
                 this.dataLoaded = true;
@@ -114,6 +122,7 @@ Module.register("MMM-DCMetroTrainTimes", {
         }
         if (notification === "DCMETRO_TOO_MANY_ERRORS")
         { // if an error, set the error flag and update dom
+            console.log("");
             this.errorMessage = 'Error: Too Many REST Failures';
             this.updateDom();
         }
@@ -145,7 +154,8 @@ Module.register("MMM-DCMetroTrainTimes", {
         // if error has occured indicate so and return
         if (this.errorMessage !== null)
 		{
-			var wrapper = document.createElement("div");
+			console.log("");
+            var wrapper = document.createElement("div");
             wrapper.className = "small";
 			wrapper.innerHTML = this.errorMessage;
 			return wrapper;		
@@ -153,7 +163,8 @@ Module.register("MMM-DCMetroTrainTimes", {
         // if no data has been loaded yet indicate so and return
 		if (!this.dataLoaded)
 		{
-			var wrapper = document.createElement("div");
+			console.log("");
+            var wrapper = document.createElement("div");
 			wrapper.className = "small";
 			wrapper.innerHTML = "Waiting For Update...";
 			return wrapper;			
@@ -163,6 +174,7 @@ Module.register("MMM-DCMetroTrainTimes", {
         // if set to show incidents and there is data for it
         if (this.config.showIncidents && (this.dataIncidentLinesList !== null))
         {
+            console.log("");
             // create the header row titled "incidents"
             var headRow = document.createElement("tr");
             var headElement = document.createElement("td");
@@ -174,6 +186,7 @@ Module.register("MMM-DCMetroTrainTimes", {
             // if there are lines with incidents on them list them
             if (this.dataIncidentLinesList.length > 0)
             {
+                console.log("");
                 var iRow = document.createElement("tr");
                 var iElement = document.createElement("td");
                 var incidentCount = this.dataIncidentLinesList.length
@@ -249,6 +262,7 @@ Module.register("MMM-DCMetroTrainTimes", {
         // if set to show station train times and there is data for it
         if (this.config.showStationTrainTimes && (this.dataStationTrainTimesList !== null))
         {
+            console.log("");
             // iterate through each station in config station list
             for (var curStationIndex = 0; curStationIndex < this.config.stationsToShowList.length; curStationIndex++)
             {                      
@@ -323,6 +337,7 @@ Module.register("MMM-DCMetroTrainTimes", {
         // if set to show bus times and there is data for it
         if (this.config.showBusStopTimes && (this.dataBusStopTimesList !== null))
         {
+            console.log("");
             // iterate through each stop in config stop list
             for (var curStopIndex = 0; curStopIndex < this.config.stopsToShowList.length; curStopIndex++)
             {                      
