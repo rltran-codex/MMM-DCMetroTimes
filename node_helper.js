@@ -27,15 +27,19 @@ module.exports = NodeHelper.create({
 	},
 	// subclass socketNotificationReceived, received notification from module
 	socketNotificationReceived: function(notification, theConfig) {
+		Log.log("socket received by helper");
+		this.sendSocketNotification('DEBUG', "test");
 		if (notification === "REGISTER_CONFIG") {
         // create self reference for interval calls
 			var self = this;
+			this.sendSocketNotification('DEBUG', "test");
             // load in the station information list
 			this.loadStationInformationList(theConfig.path);
             // if config-ed to show incidients, start that up
 			if (theConfig.showIncidents)
 			{
-
+				this.sendSocketNotification('DEBUG', "showIncidents = true" );
+				Log.log("showIncidents = true");
 				this.updateIncidents(theConfig);	
                 setInterval(function() { self.updateIncidents(theConfig); }, 
                     theConfig.refreshRateIncidents);
@@ -43,6 +47,8 @@ module.exports = NodeHelper.create({
             // if config-ed to show station train times, start that up
 			if (theConfig.showStationTrainTimes)
 			{
+                this.sendSocketNotification('DEBUG', "showStationTrainTimes = true" );
+                Log.log("showStationTrainTimes = true");
                 // delay the first train times check to not collide with first incident update
                 setTimeout(function() { self.updateTrainTimes(theConfig); },
                     1000);
@@ -52,7 +58,9 @@ module.exports = NodeHelper.create({
 			// if config-ed to show bus times, start that up
 			if (theConfig.showBusStopTimes)
 			{
-                // delay the first train times check to not collide with first incident update
+                this.sendSocketNotification('DEBUG', "showBusStopTimes = true" );
+                Log.log("showBusStopTimes = true");
+                // delay the first bus times check to not collide with first incident update
                 setTimeout(function() { self.updateBusTimes(theConfig); },
                     1000);
                 setInterval(function() { self.updateBusTimes(theConfig); }, 
@@ -241,6 +249,7 @@ module.exports = NodeHelper.create({
     // return is a JSON object with keys of the stopIDs
     // contains the stop name and the list of train times
     getEmptyBusStopTimesList: function(theConfig) {
+        Log.log("in getEmptyBusStopTimesList")
         var returnList = {};
 	    for (var cIndex = 0; cIndex < theConfig.stopsToShowList.length; cIndex++) {
 	    	var stopID = theConfig.stopsToShowList[cIndex];
@@ -378,11 +387,13 @@ module.exports = NodeHelper.create({
 	},
 	// makes the call to get the bus times list
 	updateBusTimes: function(theConfig){   
+	    Log.log("in updateBusTimes")
 	    var self = this;
 	    // build an empty list in case some stations have no trains times
 	    var busStopList = this.getEmptyBusStopTimesList(theConfig);
         // iterate through comma delimited stopIDs, build accordingly and return result
 	    for (var cIndex = 0; cIndex < theConfig.stopsToShowList.length; cIndex++){
+	        Log.log("in updateBusTimes for loop")
 	        var stopID = theConfig.stopsToShowList[cIndex];
 	        // build the full URL call
 	        var wmataBusTimesURL = 

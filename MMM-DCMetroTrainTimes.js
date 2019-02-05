@@ -36,10 +36,10 @@ Module.register("MMM-DCMetroTrainTimes", {
         incidentCodesOnly: false, // default to full text incident line listing
 
         // bus parameters
-        showBusStopTimes: false, // hide bus times by default
-        stopsToShowList: [], // stopIDs which can be pulled from https://www.wmata.com/schedules/service-nearby/
+        showBusStopTimes: true, // hide bus times by default
+        stopsToShowList: ['1001451'], // stopIDs which can be pulled from https://www.wmata.com/schedules/service-nearby/
         routesToExcludeList: [], // routeIDs (list of lists) for each stop which can be pulled from https://www.wmata.com/schedules/service-nearby/
-        directionText: false, // default to hide "customer-friendly description of direction and destination for a bus"
+        directionText: true, // default to hide "customer-friendly description of direction and destination for a bus"
         hideBusTimesLessThan: 0, // default to show all bus times within 45 min
         hideBusTimesGreaterThan: 45, // default to show all bus times within 45 min
         refreshRateBusStopTimes: 30 * 1000, // thirty second default
@@ -59,26 +59,40 @@ Module.register("MMM-DCMetroTrainTimes", {
 		this.dataStationTrainTimesList = null;
         this.dataBusStopTimesList = null;
 		// if set to show the header, set it
-        if (this.config.showHeader)
+        if (this.config.showHeader) {  
             this.data.header = this.config.headerText;
+        }
          // the api key is set, send the config
-		if (this.config.wmata_api_key !== null) 
-			this.sendSocketNotification('REGISTER_CONFIG', this.config);	
+        if (this.config.wmata_api_key !== null) {
+            Log.log("sending REGISTER_CONFIG");
+            this.sendSocketNotification('REGISTER_CONFIG', this.config);
+        }	
         // if not, flag the error
-		else 
-			this.errorMessage = 'Error: Missing API Key';
-        // schedule the first dom update
-        var self = this;
-		setTimeout(function() { self.firstUpdateDOM(); }, 2000);
-	},	
+        else {
+            this.errorMessage = 'Error: Missing API Key';
+            // schedule the first dom update
+            var self = this;
+            setTimeout(function() { self.firstUpdateDOM(); }, 2000);
+        }
+    },	
     // delayed call for first DOM update
     firstUpdateDOM: function() {
         this.firstUpdateDOMFlag = true;
-        this.updateDom();     
+        Log.log("first update DOM");
+        this.updateDom();   
     },
 	// the socket handler
 	socketNotificationReceived: function(notification, payload) {
-		if (notification === "DCMETRO_INCIDENT_UPDATE")
+		Log.log("DEBUG");
+        if (notification === "DEBUG")
+        { // if an incident update check matching id, load data, and update dom
+            Log.log("DEBUG");
+            if (payload.identifier === this.identifier)
+            {
+            Log.log("DEBUG" + payload);              
+            }
+        }
+        if (notification === "DCMETRO_INCIDENT_UPDATE")
 		{ // if an incident update check matching id, load data, and update dom
             if (payload.identifier === this.identifier)
 			{
@@ -142,10 +156,12 @@ Module.register("MMM-DCMetroTrainTimes", {
     },
 	// the get dom handler
 	getDom: function() {    
+        Log.log("updating DOM");
         // if error has occured indicate so and return
         if (this.errorMessage !== null)
 		{
-			var wrapper = document.createElement("div");
+			Log.log("crafting error message");
+            var wrapper = document.createElement("div");
             wrapper.className = "small";
 			wrapper.innerHTML = this.errorMessage;
 			return wrapper;		
@@ -153,7 +169,8 @@ Module.register("MMM-DCMetroTrainTimes", {
         // if no data has been loaded yet indicate so and return
 		if (!this.dataLoaded)
 		{
-			var wrapper = document.createElement("div");
+			Log.log("data hasn't loaded");
+            var wrapper = document.createElement("div");
 			wrapper.className = "small";
 			wrapper.innerHTML = "Waiting For Update...";
 			return wrapper;			
