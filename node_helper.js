@@ -30,7 +30,8 @@ module.exports = NodeHelper.create({
 		Log.log("socket received by helper");
 		this.sendSocketNotification('DEBUG', "test");
 		if (notification === "REGISTER_CONFIG") {
-        // create self reference for interval calls
+        	console.log("");
+        	// create self reference for interval calls
 			var self = this;
 			this.sendSocketNotification('DEBUG', "test");
             // load in the station information list
@@ -348,15 +349,16 @@ module.exports = NodeHelper.create({
 	            	busListPart[busListPart.length] = busPart;
                 // set the main station train list object to the train list part
 	            busStopList[stopID].BusList = busListPart;
+	            busStopList[stopID].StopName = stopName;
 	        }
 	    }
-        // return payload is the module id and the station train list 
-	    var returnPayload = { 
-	        identifier: theConfig.identifier,
-	        busStopList: busStopList
-	    };
         // if we've gone through all stops, send the payload back to the module
 	    if (theConfig.stopsToShowList[theConfig.stopsToShowList.length - 1] == stopID)
+	    	// return payload is the module id and the station train list 
+		    var returnPayload = { 
+		        identifier: theConfig.identifier,
+		        busStopList: busStopList
+		    };
 	    	this.sendSocketNotification('DCMETRO_BUSTOPTIMES_UPDATE', returnPayload);
 	},
     // makes the call to get the train times list
