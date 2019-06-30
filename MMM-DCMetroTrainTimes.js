@@ -338,7 +338,7 @@ Module.register("MMM-DCMetroTrainTimes", {
                     headElement.innerHTML = cStop.StopName;                   
                     headRow.appendChild(headElement);
                     wrapper.appendChild(headRow);                               
-                    // if there are train times in the list
+                    // if there are bus times in the list
                     if (cStop.BusList.length > 0)
                     {
                         // cap the number of bus times to show if config-ed to do so

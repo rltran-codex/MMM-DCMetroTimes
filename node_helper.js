@@ -320,27 +320,39 @@ module.exports = NodeHelper.create({
 	isWithinConfigThreshold: function(theConfig, theMin) {        
         this.sendSocketNotification('DEBUG', "isWithinConfigThreshold" );
         if ( (theMin < theConfig.hideBusTimesLessThan)
-        	|| (theMin > theConfig.hideBusTimesGreaterThan) )
-            return false
+        	|| (theMin > theConfig.hideBusTimesGreaterThan) ) {
+            this.sendSocketNotification('DEBUG', "false" );
+            return false;
+        }
+        this.sendSocketNotification('DEBUG', "true" );
         return true;
 	}, 
-	// checks if the route ID is in not the list of routes to exclude
+	// checks if the route ID is in the list of routes to exclude
     // returns true if not found
     // return false if found
 	doesNotContainExcludedRoute: function(theConfig, theStopID, theRouteID) {
 		this.sendSocketNotification('DEBUG', "doesNotContainExcludedRoute" );
 		// iterate through stopIDs to find a match
 		for (var cJindex = 0; cJindex < theConfig.stopsToShowList.length; cJindex++) {
+	        this.sendSocketNotification('DEBUG', "first for loop" );
 	        if (theConfig.stopsToShowList[cJindex] == theStopID) {
-		        // iterate through routes to exclude, if one matches return false
-		        for (var cIndex = 0; cIndex < theConfig.routesToExcludeList[cJindex].length; cIndex++) {
-		            var routeToExclude = theConfig.routesToExcludeList[cJindex][cIndex];
-		            if (theRouteID === routeToExclude)
-		                return false;
-		        }        
+		        this.sendSocketNotification('DEBUG', "first if" );
+			    if ( theConfig.routesToExcludeList.length != 0 ) {
+			        // iterate through routes to exclude, if one matches return false
+			        this.sendSocketNotification('DEBUG', theConfig.routesToExcludeList[cJindex].length );
+			        for (var cIndex = 0; cIndex < theConfig.routesToExcludeList[cJindex].length; cIndex++) {
+			            this.sendSocketNotification('DEBUG', "second for" );
+			            var routeToExclude = theConfig.routesToExcludeList[cJindex][cIndex];
+			            if (theRouteID === routeToExclude) {
+			                this.sendSocketNotification('DEBUG', "returning false" );
+			                return false;
+			            }
+			        }
+			    }       
 		    }
 		}
 		// otherwise return true
+        this.sendSocketNotification('DEBUG', "returning true" );
         return true;
 	},
 	// does the work of parsing the bus times from the REST call
@@ -369,17 +381,17 @@ module.exports = NodeHelper.create({
 	            var busPart = { 
             		DirectionText: bDirectionText,
                 	DirectionNum: bDirectionNum,
-                	Route: bRouteID,
+                	RouteID: bRouteID,
                 	Min: bMinutes
                 };
                 // if route ID isn't on the list of exclusions and
                 // it is not missing any of the required fields, then add
                 // it to the list
-	            if ( (this.doesNotContainExcludedRoute(theConfig, stopID, bRouteID))
-                    && this.isWithinConfigThreshold(theConfig, tMin)
+	            if ( this.doesNotContainExcludedRoute(theConfig, stopID, bRouteID)
+                    && this.isWithinConfigThreshold(theConfig, bMinutes)
                     && (bDirectionText !== '')
                     && (bDirectionNum !== '')
-                    && (bMinutes !== '') )                   
+                    && (bMinutes !== '') ) 
 	            	busListPart[busListPart.length] = busPart;
                 // set the main station train list object to the train list part
 	            busStopList[stopID].BusList = busListPart;
