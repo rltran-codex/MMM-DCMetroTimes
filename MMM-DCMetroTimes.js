@@ -30,7 +30,7 @@ Module.register("MMM-DCMetroTimes", {
         maxTrainTimesPerStation: 0, // default shows all train times
         // header parameters
         showHeader: true, // show the header by default
-        headerText: "DC Metro Train Times", // default header text
+        headerText: "DC Metro Times", // default header text
         limitWidth: "200px", // limits the incident list (widest cell) width
         colorizeLines: false, // default to no color
         incidentCodesOnly: false, // default to full text incident line listing

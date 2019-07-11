@@ -33,7 +33,7 @@ To use this module, add it to the modules array in the `config/config.js` file:
 ````javascript
 modules: [
 	{
-		module: 'MMM-DCMetroTrainTimes',
+		module: 'MMM-DCMetroTimes',
 		position: 'bottom_right',
 		config: {
 		// general
