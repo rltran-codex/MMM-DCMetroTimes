@@ -1,15 +1,20 @@
-/* MMM-DCMetroTrainTimes.js
+/* MMM-DCMetroTimes.js
  * 
  * Magic Mirror
- * Module: MMM-DCMetroTrainTimes
+ * Module: MMM-DCMetroTimes
  * 
  * Magic Mirror By Michael Teeuw http://michaelteeuw.nl
  * MIT Licensed.
  * 
+ * Module MMM-DCMetroTimes By Kyle Kelly
+ *
+ * Forked From:
+ *
  * Module MMM-DCMetroTrainTimes By Adam Moses http://adammoses.com
  */
+
 // main module setup stuff
-Module.register("MMM-DCMetroTrainTimes", {
+Module.register("MMM-DCMetroTimes", {
     // setup the default config options
     defaults: {     
         // required
@@ -32,7 +37,7 @@ Module.register("MMM-DCMetroTrainTimes", {
         hideTrainTimesLessThan: 0, // default to show all train times
         showDestinationFullName: true, // default to show full train destination names
         // bus parameters
-        showBusStopTimes: true, // hide bus times by default
+        showBusStopTimes: false, // hide bus times by default
         stopsToShowList: ['1001451'], // stopIDs which can be pulled from https://www.wmata.com/schedules/service-nearby/
         routesToExcludeList: [], // routeIDs (list of lists) for each stop which can be pulled from https://www.wmata.com/schedules/service-nearby/
         directionText: true, // default to hide "customer-friendly description of direction and destination for a bus"
@@ -78,6 +83,7 @@ Module.register("MMM-DCMetroTrainTimes", {
         { // if an incident update check matching id, load data, and update dom
             if (payload.identifier === this.identifier)
             {
+                this.errorMessage = null;
                 this.dataIncidentDescriptionList = payload.descriptionList;
                 this.dataIncidentLinesList = payload.linesList;
                 this.dataLoaded = true;
@@ -89,6 +95,7 @@ Module.register("MMM-DCMetroTrainTimes", {
         { // if an station train times update check matching id, load data, and update dom
             if (payload.identifier === this.identifier)
             {
+                this.errorMessage = null;
                 this.dataStationTrainTimesList = payload.stationTrainList;
                 this.dataLoaded = true;
                 if (this.firstUpdateDOMFlag) 
@@ -97,16 +104,16 @@ Module.register("MMM-DCMetroTrainTimes", {
         }
         if (notification === "DCMETRO_BUSTOPTIMES_UPDATE")
         { // if a bus stop times update check matching id, load data, and update dom
-            Log.log("DCMETRO_BUSTOPTIMES_UPDATE");
             if (payload.identifier === this.identifier)
             {
+                this.errorMessage = null;
                 this.dataBusStopTimesList = payload.busStopList;
                 this.dataLoaded = true;
                 if (this.firstUpdateDOMFlag) 
                     this.updateDom();               
             }
         }
-        if (notification === "DCMETRO_TOO_MANY_ERRORS")
+        if (notification === "DCMETRO_ERROR")
         { // if an error, set the error flag and update dom
             this.errorMessage = 'Error: Too Many REST Failures';
             this.updateDom();

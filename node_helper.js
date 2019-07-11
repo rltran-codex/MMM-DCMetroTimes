@@ -1,10 +1,14 @@
 /* node_helper.js
  * 
  * Magic Mirror
- * Module: MMM-DCMetroTrainTimes
+ * Module: MMM-DCMetroTimes
  * 
  * Magic Mirror By Michael Teeuw http://michaelteeuw.nl
  * MIT Licensed.
+ * 
+ * Module MMM-DCMetroTimes By Kyle Kelly
+ *
+ * Forked From:
  * 
  * Module MMM-DCMetroTrainTimes By Adam Moses http://adammoses.com
  */
@@ -14,14 +18,11 @@ var NodeHelper = require("node_helper");
 const https = require('https');
 const querystring = require('querystring');
 const fs = require('fs');
-const errorFailLimit = 5;
 // the main module helper create
 module.exports = NodeHelper.create({
 	// subclass start method, clears the initial config array
 	start: function() {
 		this.stationInformationList = null;
-        this.errorCount = 0;
-        this.stopUpdates = false;
 	},
 	// subclass socketNotificationReceived, received notification from module
 	socketNotificationReceived: function(notification, theConfig) {
@@ -50,7 +51,6 @@ module.exports = NodeHelper.create({
 			// if config-ed to show bus times, start that up
 			if (theConfig.showBusStopTimes)
 			{
-                this.sendSocketNotification('DEBUG', "showBusStopTimes" );
                 // delay the first bus times check to not collide with first incident update
                 setTimeout(function() { self.updateBusTimes(theConfig); },
                     1000);
@@ -60,14 +60,9 @@ module.exports = NodeHelper.create({
 			return;
 		}
 	},
-    // increment error count, if passed limit send notice to module
+    // send notice to module
     processError: function() {
-        this.errorCount += 1;
-        if (this.errorCount >= errorFailLimit)
-        {
-            this.sendSocketNotification('DCMETRO_TOO_MANY_ERRORS', {} );
-            this.stopUpdates = true;
-        }
+        this.sendSocketNotification('DCMETRO_ERROR', {} );
     },
 	// --- STATION INFORMATION STUFF ---
     // loads the station information list from file
@@ -138,7 +133,6 @@ module.exports = NodeHelper.create({
             + theConfig.wmata_api_key;
         // create a self to use in the async call                                
 	    var self = this;
-        if (!this.stopUpdates) {
 	    https.get(wmataIncidentURL, (res) => {
 	      let rawData = '';
 	      res.on('data', (chunk) => rawData += chunk);
@@ -150,7 +144,7 @@ module.exports = NodeHelper.create({
         // if an error, handle it
 	    .on('error', (e) => {
             self.processError();
-        }); }
+        });
 	},
 	// --- STATION TRAIN TIME STUFF ---
     // checks if the destination code is in not the list destinations to exclue
@@ -280,7 +274,6 @@ module.exports = NodeHelper.create({
 	        + trainQuery 
 	        + '?api_key=' 
 	        + theConfig.wmata_api_key;
-        if (!this.stopUpdates) {
         // make the async call        
 	    https.get(wmataTrainTimesURL, (res) => {
 	      let rawData = '';
@@ -293,14 +286,13 @@ module.exports = NodeHelper.create({
         // if an error handle it
 	    .on('error', (e) => {
             self.processError();
-	    }); }
+	    });
 	},
 	// --- BUS TIME STUFF ---
 	// build an empty bus stop times list to return in the payload
     // return is a JSON object with keys of the stopIDs
     // contains the stop name and the list of train times
     getEmptyBusStopTimesList: function(theConfig) {
-        this.sendSocketNotification('DEBUG', "getEmptyBusStopTimesList" );
         var returnList = {};
 	    for (var cIndex = 0; cIndex < theConfig.stopsToShowList.length; cIndex++) {
 	    	var stopID = theConfig.stopsToShowList[cIndex];
@@ -318,33 +310,24 @@ module.exports = NodeHelper.create({
 	// checks that bus time string is not within the configured time
     // to show it
 	isWithinConfigThreshold: function(theConfig, theMin) {        
-        this.sendSocketNotification('DEBUG', "isWithinConfigThreshold" );
         if ( (theMin < theConfig.hideBusTimesLessThan)
         	|| (theMin > theConfig.hideBusTimesGreaterThan) ) {
-            this.sendSocketNotification('DEBUG', "false" );
             return false;
         }
-        this.sendSocketNotification('DEBUG', "true" );
         return true;
 	}, 
 	// checks if the route ID is in the list of routes to exclude
     // returns true if not found
     // return false if found
 	doesNotContainExcludedRoute: function(theConfig, theStopID, theRouteID) {
-		this.sendSocketNotification('DEBUG', "doesNotContainExcludedRoute" );
 		// iterate through stopIDs to find a match
 		for (var cJindex = 0; cJindex < theConfig.stopsToShowList.length; cJindex++) {
-	        this.sendSocketNotification('DEBUG', "first for loop" );
 	        if (theConfig.stopsToShowList[cJindex] == theStopID) {
-		        this.sendSocketNotification('DEBUG', "first if" );
 			    if ( theConfig.routesToExcludeList.length != 0 ) {
 			        // iterate through routes to exclude, if one matches return false
-			        this.sendSocketNotification('DEBUG', theConfig.routesToExcludeList[cJindex].length );
 			        for (var cIndex = 0; cIndex < theConfig.routesToExcludeList[cJindex].length; cIndex++) {
-			            this.sendSocketNotification('DEBUG', "second for" );
 			            var routeToExclude = theConfig.routesToExcludeList[cJindex][cIndex];
 			            if (theRouteID === routeToExclude) {
-			                this.sendSocketNotification('DEBUG', "returning false" );
 			                return false;
 			            }
 			        }
@@ -352,18 +335,13 @@ module.exports = NodeHelper.create({
 		    }
 		}
 		// otherwise return true
-        this.sendSocketNotification('DEBUG', "returning true" );
         return true;
 	},
 	// does the work of parsing the bus times from the REST call
 	parseBusTimes: function(theConfig, stopID, responseContent, busStopList) {
-		this.sendSocketNotification('DEBUG', "parseBusTimes" );
 		var stopName = responseContent.StopName;
 		var theBuses = responseContent.Predictions;
         // iterate through the train times list
-	    this.sendSocketNotification('DEBUG', "starting for loop" );
-	    this.sendSocketNotification('DEBUG', "stopName = " + stopName );
-	    this.sendSocketNotification('DEBUG', "theBuses.length = " + theBuses.length );
 	    for (var cIndex = 0; cIndex < theBuses.length; cIndex++){
 	        var bus = theBuses[cIndex];
             // make sure there is a destination code
@@ -398,11 +376,9 @@ module.exports = NodeHelper.create({
 	            busStopList[stopID].StopName = stopName;
 	        }
 	    }
-	    this.sendSocketNotification('DEBUG', "exited for loop" );
         // if we've gone through all stops, send the payload back to the module
 	    if (theConfig.stopsToShowList[theConfig.stopsToShowList.length - 1] == stopID)
 	    {
-	    	this.sendSocketNotification('DEBUG', "crafting payload" );
 	    	// return payload is the module id and the station train list 
 		    var returnPayload = { 
 		        identifier: theConfig.identifier,
@@ -413,15 +389,12 @@ module.exports = NodeHelper.create({
 	},
 	// makes the call to get the bus times list
 	updateBusTimes: function(theConfig){
-		this.sendSocketNotification('DEBUG', "updateBusTimes" );  
 	    var self = this;
 	    // build an empty list in case some stations have no trains times
 	    var busStopList = this.getEmptyBusStopTimesList(theConfig);
         // iterate through comma delimited stopIDs, build accordingly and return result
-	    this.sendSocketNotification('DEBUG', theConfig.stopsToShowList.length );
 	    for (var cIndex = 0; cIndex < theConfig.stopsToShowList.length; cIndex++){
 	        var stopID = theConfig.stopsToShowList[cIndex];
-	        this.sendSocketNotification('DEBUG', stopID );
 	        var params = {
 			    hostname: 'api.wmata.com',
 			    port: 443,
@@ -431,23 +404,19 @@ module.exports = NodeHelper.create({
 			        api_key: theConfig.wmata_api_key
 			    }
 			};
-			if (!this.stopUpdates) {
-		        // make the async call        
-			    https.get(params, (res) => {
-			    	let rawData = '';
-			      	res.on('data', (chunk) => rawData += chunk);
-			      	res.on('end', () => {
-		            	// once you have all the data send it to be parsed
-			        	this.sendSocketNotification('DEBUG', JSON.parse(rawData) );
-			        	self.parseBusTimes(theConfig, stopID, JSON.parse(rawData), busStopList);
-			      	});
-			    })
-		        // if an error handle it
-			    .on('error', (e) => {
-		            this.sendSocketNotification('DEBUG', "error" );
-		            self.processError();
-			    });
-			}
+	        // make the async call        
+		    https.get(params, (res) => {
+		    	let rawData = '';
+		      	res.on('data', (chunk) => rawData += chunk);
+		      	res.on('end', () => {
+	            	// once you have all the data send it to be parsed
+		        	self.parseBusTimes(theConfig, stopID, JSON.parse(rawData), busStopList);
+		      	});
+		    })
+	        // if an error handle it
+		    .on('error', (e) => {
+	            self.processError();
+		    });
 		}
 	}
 });
