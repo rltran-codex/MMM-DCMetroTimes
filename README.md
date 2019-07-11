@@ -9,7 +9,7 @@ In addition, I have added WMATA real-time bus predictions, which are configurabl
 
 Example:
 
-![Full](images/example1.jpg) ![Full](images/example2.jpg) ![Full](images/example3.png)
+![Full](images/example1.jpg) ![Full](images/example2.jpg) ![Full](images/example3.png =341x)
 
 ## Dependencies / Requirements
 
