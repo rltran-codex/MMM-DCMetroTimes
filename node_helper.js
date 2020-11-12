@@ -1,10 +1,14 @@
 /* node_helper.js
  * 
  * Magic Mirror
- * Module: MMM-DCMetroTrainTimes
+ * Module: MMM-DCMetroTimes
  * 
  * Magic Mirror By Michael Teeuw http://michaelteeuw.nl
  * MIT Licensed.
+ * 
+ * Module MMM-DCMetroTimes By Kyle Kelly
+ *
+ * Forked From:
  * 
  * Module MMM-DCMetroTrainTimes By Adam Moses http://adammoses.com
  */
@@ -14,14 +18,11 @@ var NodeHelper = require("node_helper");
 const https = require('https');
 const querystring = require('querystring');
 const fs = require('fs');
-const errorFailLimit = 5;
 // the main module helper create
 module.exports = NodeHelper.create({
 	// subclass start method, clears the initial config array
 	start: function() {
 		this.stationInformationList = null;
-        this.errorCount = 0;
-        this.stopUpdates = false;
 	},
 	// subclass socketNotificationReceived, received notification from module
 	socketNotificationReceived: function(notification, theConfig) {
@@ -46,18 +47,22 @@ module.exports = NodeHelper.create({
                     1000);
                 setInterval(function() { self.updateTrainTimes(theConfig); }, 
                     theConfig.refreshRateStationTrainTimes);
-			}			
+			}
+			// if config-ed to show bus times, start that up
+			if (theConfig.showBusStopTimes)
+			{
+                // delay the first bus times check to not collide with first incident update
+                setTimeout(function() { self.updateBusTimes(theConfig); },
+                    1000);
+                setInterval(function() { self.updateBusTimes(theConfig); }, 
+                    theConfig.refreshRateBusStopTimes);
+			}		
 			return;
 		}
 	},
-    // increment error count, if passed limit send notice to module
+    // send notice to module
     processError: function() {
-        this.errorCount += 1;
-        if (this.errorCount >= errorFailLimit)
-        {
-            this.sendSocketNotification('DCMETRO_TOO_MANY_ERRORS', {} );
-            this.stopUpdates = true;
-        }
+        this.sendSocketNotification('DCMETRO_ERROR', {} );
     },
 	// --- STATION INFORMATION STUFF ---
     // loads the station information list from file
@@ -128,7 +133,6 @@ module.exports = NodeHelper.create({
             + theConfig.wmata_api_key;
         // create a self to use in the async call                                
 	    var self = this;
-        if (!this.stopUpdates) {
 	    https.get(wmataIncidentURL, (res) => {
 	      let rawData = '';
 	      res.on('data', (chunk) => rawData += chunk);
@@ -140,7 +144,7 @@ module.exports = NodeHelper.create({
         // if an error, handle it
 	    .on('error', (e) => {
             self.processError();
-        }); }
+        });
 	},
 	// --- STATION TRAIN TIME STUFF ---
     // checks if the destination code is in not the list destinations to exclue
@@ -166,7 +170,7 @@ module.exports = NodeHelper.create({
             cMin = 0;
         cMin = parseInt(cMin);
         if (cMin < theConfig.hideTrainTimesLessThan)
-            return false
+            return false;
         return true;
 	},    
     // builds part of the REST API URL query to call based on station codes
@@ -270,7 +274,6 @@ module.exports = NodeHelper.create({
 	        + trainQuery 
 	        + '?api_key=' 
 	        + theConfig.wmata_api_key;
-        if (!this.stopUpdates) {
         // make the async call        
 	    https.get(wmataTrainTimesURL, (res) => {
 	      let rawData = '';
@@ -283,8 +286,139 @@ module.exports = NodeHelper.create({
         // if an error handle it
 	    .on('error', (e) => {
             self.processError();
-	    }); }
-	}	
+	    });
+	},
+	// --- BUS TIME STUFF ---
+	// build an empty bus stop times list to return in the payload
+    // return is a JSON object with keys of the stopIDs
+    // contains the stop name and the list of train times
+    getEmptyBusStopTimesList: function(theConfig) {
+        var returnList = {};
+	    for (var cIndex = 0; cIndex < theConfig.stopsToShowList.length; cIndex++) {
+	    	var stopID = theConfig.stopsToShowList[cIndex];
+            if (returnList[stopID] === undefined){
+                var initStopPart = { 
+                	StopID: stopID,
+                	StopName: "",
+                    BusList: []
+                };
+                returnList[stopID] = initStopPart;               
+            } 
+	    }
+        return returnList;
+    },
+	// checks that bus time string is not within the configured time
+    // to show it
+	isWithinConfigThreshold: function(theConfig, theMin) {        
+        if ( (theMin < theConfig.hideBusTimesLessThan)
+        	|| (theMin > theConfig.hideBusTimesGreaterThan) ) {
+            return false;
+        }
+        return true;
+	}, 
+	// checks if the route ID is in the list of routes to exclude
+    // returns true if not found
+    // return false if found
+	doesNotContainExcludedRoute: function(theConfig, theStopID, theRouteID) {
+		// iterate through stopIDs to find a match
+		for (var cJindex = 0; cJindex < theConfig.stopsToShowList.length; cJindex++) {
+	        if (theConfig.stopsToShowList[cJindex] == theStopID) {
+			    if ( theConfig.routesToExcludeList.length != 0 ) {
+			        // iterate through routes to exclude, if one matches return false
+			        for (var cIndex = 0; cIndex < theConfig.routesToExcludeList[cJindex].length; cIndex++) {
+			            var routeToExclude = theConfig.routesToExcludeList[cJindex][cIndex];
+			            if (theRouteID === routeToExclude) {
+			                return false;
+			            }
+			        }
+			    }       
+		    }
+		}
+		// otherwise return true
+        return true;
+	},
+	// does the work of parsing the bus times from the REST call
+	parseBusTimes: function(theConfig, stopID, responseContent, busStopList) {
+		var stopName = responseContent.StopName;
+		var theBuses = responseContent.Predictions;
+        // iterate through the train times list
+	    for (var cIndex = 0; cIndex < theBuses.length; cIndex++){
+	        var bus = theBuses[cIndex];
+            // make sure there is a destination code
+	        if (bus.RouteID !== null)
+	        {
+                // get all the parts of the bus time
+	            var bRouteID     		= bus.RouteID;
+	            var bDirectionText		= bus.DirectionText;
+	            var bDirectionNum     	= bus.DirectionNum;
+	            var bMinutes  			= bus.Minutes;
+	            var bVehicleID  		= bus.VehicleID;
+	            var bTripID             = bus.TripID;
+	            var busListPart 		= busStopList[stopID].BusList;
+                // build the bus part
+	            var busPart = { 
+            		DirectionText: bDirectionText,
+                	DirectionNum: bDirectionNum,
+                	RouteID: bRouteID,
+                	Min: bMinutes
+                };
+                // if route ID isn't on the list of exclusions and
+                // it is not missing any of the required fields, then add
+                // it to the list
+	            if ( this.doesNotContainExcludedRoute(theConfig, stopID, bRouteID)
+                    && this.isWithinConfigThreshold(theConfig, bMinutes)
+                    && (bDirectionText !== '')
+                    && (bDirectionNum !== '')
+                    && (bMinutes !== '') ) 
+	            	busListPart[busListPart.length] = busPart;
+                // set the main station train list object to the train list part
+	            busStopList[stopID].BusList = busListPart;
+	            busStopList[stopID].StopName = stopName;
+	        }
+	    }
+        // if we've gone through all stops, send the payload back to the module
+	    if (theConfig.stopsToShowList[theConfig.stopsToShowList.length - 1] == stopID)
+	    {
+	    	// return payload is the module id and the station train list 
+		    var returnPayload = { 
+		        identifier: theConfig.identifier,
+		        busStopList: busStopList
+		    };
+	    	this.sendSocketNotification('DCMETRO_BUSTOPTIMES_UPDATE', returnPayload);
+	    }
+	},
+	// makes the call to get the bus times list
+	updateBusTimes: function(theConfig){
+	    var self = this;
+	    // build an empty list in case some stations have no trains times
+	    var busStopList = this.getEmptyBusStopTimesList(theConfig);
+        // iterate through comma delimited stopIDs, build accordingly and return result
+	    for (var cIndex = 0; cIndex < theConfig.stopsToShowList.length; cIndex++){
+	        var stopID = theConfig.stopsToShowList[cIndex];
+	        var params = {
+			    hostname: 'api.wmata.com',
+			    port: 443,
+			    path: '/NextBusService.svc/json/jPredictions' + '?StopID=' + stopID,
+			    method: 'GET',
+			    headers: {
+			        api_key: theConfig.wmata_api_key
+			    }
+			};
+	        // make the async call        
+		    https.get(params, (res) => {
+		    	let rawData = '';
+		      	res.on('data', (chunk) => rawData += chunk);
+		      	res.on('end', () => {
+	            	// once you have all the data send it to be parsed
+		        	self.parseBusTimes(theConfig, stopID, JSON.parse(rawData), busStopList);
+		      	});
+		    })
+	        // if an error handle it
+		    .on('error', (e) => {
+	            self.processError();
+		    });
+		}
+	}
 });
 
 //------------ END -------------
