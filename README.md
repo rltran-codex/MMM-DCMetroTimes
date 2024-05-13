@@ -65,6 +65,19 @@ The following properties can be configured:
 | `wmata_api_key` | Used by the module to make calls to the WMATA JSON REST API.<br>For more visit https://developer.wmata.com/.<br>This value is **REQUIRED** |
 | `showHeader` | Toggles the header title on or off.<br>**Example:** false<br>**Default value:** true<br>This value is **OPTIONAL** |
 | `headerText` | The text to display in the header title.<br>**Example:** "WMATA Train Arrival Times"<br>**Default value:** "DC Metro Times"<br>This value is **OPTIONAL** |
+| `colorTheme` | Customize the color of arrival times, bus route, station name, and bus stop name.<br>Note, `colorizeLines` must be set to true for colors to be set successfully.<br>This value is **OPTIONAL** |
+| `dimmedThreshold` | Set the minute threshold of when to start dimming the arrival times that are greater than this value. Default is `0` and no times will be dimmed.<br>**Example:** `dimmedThreshold: 10` all arrival times after 10 minutes will be dimmed.<br>This value is **OPTIONAL** |
+
+Example of `colorTheme`
+```
+	colorizeLines: true,
+	colorTheme: {
+		  stationColor: "#19a6df",
+		  busStopColor: "#19a6df",
+		  busRouteColor: "#fcaf17",
+		  scheduleColor: "#f26a36",
+	},
+```
 
 ### Trains
 

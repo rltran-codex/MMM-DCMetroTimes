@@ -20,7 +20,6 @@ Module.register("MMM-DCMetroTimes", {
     // required
     wmata_api_key: null, // this must be set
     // optional
-    // bus parameters
     showIncidents: true, // show incidents by default
     showStationTrainTimes: true, // show train times by default
     stationsToShowList: ["A01", "C01"], // both metro centers default
@@ -28,6 +27,7 @@ Module.register("MMM-DCMetroTimes", {
     refreshRateIncidents: 2 * 60 * 1000, // two minute default
     refreshRateStationTrainTimes: 30 * 1000, // thirty second default
     maxTrainTimesPerStation: 0, // default shows all train times
+
     // header parameters
     showHeader: true, // show the header by default
     headerText: "DC Metro Times", // default header text
@@ -45,6 +45,13 @@ Module.register("MMM-DCMetroTimes", {
     hideBusTimesGreaterThan: 45, // default to show all bus times within 45 min
     refreshRateBusStopTimes: 30 * 1000, // thirty second default
     maxBusTimesPerStop: 0, // default shows all train times
+    colorTheme: {
+      stationColor: "",
+      busStopColor: "",
+      busRouteColor: "",
+      scheduleColor: "",
+    },
+    dimmedThreshold: 0,
   },
   // the start function
   start: function () {
@@ -66,6 +73,7 @@ Module.register("MMM-DCMetroTimes", {
       this.sendSocketNotification("REGISTER_CONFIG", this.config);
     // if not, flag the error
     else this.errorMessage = "Error: Missing API Key";
+    
     // schedule the first dom update
     var self = this;
     setTimeout(function () {
@@ -258,7 +266,7 @@ Module.register("MMM-DCMetroTimes", {
           headElement.align = "right";
           headElement.colSpan = "3";
           headElement.className = "small";
-          headElement.innerHTML = cStation.StationName;
+          headElement.innerHTML = cStation.StationName.toUpperCase();
           headRow.appendChild(headElement);
           wrapper.appendChild(headRow);
           // if there are train times in the list
@@ -291,6 +299,23 @@ Module.register("MMM-DCMetroTimes", {
               destElement.innerHTML = cTrain.Destination;
               var minElement = document.createElement("td");
               minElement.align = "right";
+              
+              if (this.config.dimmedThreshold != 0 && parseInt(cTrain.Min) > this.config.dimmedThreshold) { // can adjust the time threshold in future
+                minElement.style.opacity = "0.5";
+              }
+
+              if (this.config.colorizeLines) {
+                if (cTrain.Min === "BRD") {
+                  minElement.style.color = "#49742a"
+                } else if (cTrain.Min === "ARR") {
+                  minElement.style.color = "#cadb2e"
+                } else {
+                  minElement.style.color = this.config.colorTheme.scheduleColor;
+                }
+
+                headElement.style.color = this.config.colorTheme.stationColor;
+              }
+
               minElement.innerHTML = cTrain.Min;
               trainRow.appendChild(lineElement);
               trainRow.appendChild(destElement);
@@ -337,7 +362,11 @@ Module.register("MMM-DCMetroTimes", {
           headElement.align = "right";
           headElement.colSpan = "3";
           headElement.className = "small";
-          headElement.innerHTML = cStop.StopName;
+          if (this.config.colorizeLines) {
+            headElement.style.color = this.config.colorTheme.stopColor
+          }
+
+          headElement.innerHTML = cStop.StopName.toUpperCase();
           headRow.appendChild(headElement);
           wrapper.appendChild(headRow);
           // if there are bus times in the list
@@ -368,6 +397,15 @@ Module.register("MMM-DCMetroTimes", {
               var minElement = document.createElement("td");
               minElement.align = "right";
               minElement.innerHTML = cBus.Min;
+              if (this.config.dimmedThreshold != 0 && parseInt(cBus.Min) > this.config.dimmedThreshold) { // can adjust the time threshold in future
+                minElement.style.opacity = "0.5";
+              }
+
+              if (this.config.colorizeLines) {
+                minElement.style.color = this.config.colorTheme.scheduleColor;
+                lineElement.style.color = this.config.colorTheme.busRouteColor;
+                headRow.style.color = this.config.colorTheme.busStopColor;
+              }
               busRow.appendChild(lineElement);
               busRow.appendChild(destElement);
               busRow.appendChild(minElement);
